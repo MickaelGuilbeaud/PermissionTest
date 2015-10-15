@@ -19,8 +19,21 @@ android {
     }
 }
 
+ext {
+    // Base
+    appCompatVersion = '23.1.0'
+
+    // Injections
+    butterKnifeVersion = '7.0.1'
+}
+
 dependencies {
+
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.0.1'
+
+    compile "com.android.support:appcompat-v7:${appCompatVersion}"
+    compile "com.android.support:design:${appCompatVersion}"
+
+    compile "com.jakewharton:butterknife:${butterKnifeVersion}"
 }
