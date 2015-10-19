@@ -3,7 +3,8 @@
 
     <!-- region Main activity -->
     <string name="ask_permission">Ask a permission</string>
-    <string name="camera_permission_explanation">The camera permission is needed to take picture with the device camera.</string>
+    <string name="camera_permission_explanation_title">Camera permission</string>
+    <string name="camera_permission_explanation">This permission is needed to take picture with the device camera.</string>
     <string name="camera_permission_explanation_back">Back</string>
     <string name="camera_permission_explanation_ask">Ask me</string>
     <string name="error_camera_permission_denied">Camera permission denied, this functionality is not available. Please allow the camera permission.</string>

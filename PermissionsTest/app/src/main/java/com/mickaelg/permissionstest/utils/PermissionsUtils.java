@@ -1,13 +1,18 @@
 package com.mickaelg.permissionstest.utils;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
-import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.StringDef;
+import android.support.annotation.StringRes;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
+
+import com.mickaelg.permissionstest.R;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -88,28 +93,69 @@ public class PermissionsUtils {
     public static final String PERMISSION_READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
     public static final String PERMISSION_WRITE_EXTERNAL_STORAGE = "android.permission.WRITE_EXTERNAL_STORAGE";
 
-    @PermissionState
-    public static int checkPermission(Context context, @PermissionString String permission) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            // No runtime permissions for versions before Android Marshmallow, always granted
-            return PERMISSIONS_UTILS_GRANTED;
-        }
+    @TargetApi(Build.VERSION_CODES.M)
+    public static void requestPermission(Activity activity, @PermissionString String permission, int requestCode) {
+        explainAndRequestPermission(activity, permission, requestCode, -1, -1);
+    }
 
-        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+    @TargetApi(Build.VERSION_CODES.M)
+    public static void explainAndRequestPermission(Activity activity,
+                                                   @PermissionString String permission,
+                                                   int requestCode,
+                                                   @StringRes int titleResId,
+                                                   @StringRes int messageResId) {
+        if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
             // Permission is granted
-            return PERMISSIONS_UTILS_GRANTED;
+            grantPermission(activity, permission, requestCode);
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+                && titleResId != -1
+                && messageResId != -1) {
+            // Permission is not granted, we should show an explanation and we have the resources to do so
+            showPermissionAlertDialog(activity, permission, requestCode, titleResId, messageResId);
+        } else {
+            // Permission is not granted, need to ask for it
+            askPermission(activity, permission, requestCode);
         }
+    }
 
-        // shouldShowRequestPermissionRationale can only be called from an activity
-        if (context instanceof Activity) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale((Activity) context, permission)) {
-                // The user didn't grant this permission, it's the right time to show an explanation
-                return PERMISSIONS_UTILS_SHOULD_SHOW_RATIONALE;
-            }
-        }
+    @TargetApi(Build.VERSION_CODES.M)
+    private static void grantPermission(Activity activity,
+                                        String permission,
+                                        int requestCode) {
+        activity.onRequestPermissionsResult(requestCode,
+                new String[]{permission},
+                new int[]{PackageManager.PERMISSION_GRANTED});
+    }
 
-        // The permission was not granted by the user and he doesn't want to be asked again
-        return PERMISSIONS_UTILS_DENIED;
+    @TargetApi(Build.VERSION_CODES.M)
+    private static void showPermissionAlertDialog(final Activity activity,
+                                                  @PermissionString final String permission,
+                                                  final int requestCode,
+                                                  @StringRes int titleResId,
+                                                  @StringRes int messageResId) {
+        new AlertDialog.Builder(activity)
+                .setTitle(titleResId)
+                .setMessage(messageResId)
+                .setNegativeButton(R.string.camera_permission_explanation_back, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setPositiveButton(R.string.camera_permission_explanation_ask, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        askPermission(activity, permission, requestCode);
+                    }
+                })
+                .create()
+                .show();
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private static void askPermission(Activity activity, @PermissionString String permission, int requestCode) {
+        ActivityCompat.requestPermissions(activity, new String[]{permission}, requestCode);
     }
 
 }
