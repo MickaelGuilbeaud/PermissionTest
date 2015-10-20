@@ -19,6 +19,10 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
  * Class gathering permissions related methods.
+ * It helps simplify the permission request for Android M and later versions by sending the result to the
+ * onRequestPermissionsResult method for both granted and denied. It is possible to show an AlertDialog explaining the
+ * user why this method is needed, and always send the result to the onRequestPermissionResult method.
+ * This class doesn't handle pre Android M versions, and multiple permissions.
  * Created by mickaelg on 14/10/2015.
  */
 public class PermissionsUtils {
@@ -93,11 +97,29 @@ public class PermissionsUtils {
     public static final String PERMISSION_READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
     public static final String PERMISSION_WRITE_EXTERNAL_STORAGE = "android.permission.WRITE_EXTERNAL_STORAGE";
 
+    /**
+     * Request the permission given in parameter. Granted or denied, the result will be send to the
+     * Activity.onRequestPermissionsResult method.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     */
     @TargetApi(Build.VERSION_CODES.M)
     public static void requestPermission(Activity activity, @PermissionString String permission, int requestCode) {
         explainAndRequestPermission(activity, permission, requestCode, -1, -1);
     }
 
+    /**
+     * Request the permission given in parameter. Show an AlertDialog explaining the permission if needed, and the
+     * result will be send to the onRequestPermissionsResult method.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     * @param titleResId resId of the AlertDialog title
+     * @param messageResId resId of the AlertDialog content
+     */
     @TargetApi(Build.VERSION_CODES.M)
     public static void explainAndRequestPermission(Activity activity,
                                                    @PermissionString String permission,
@@ -118,15 +140,44 @@ public class PermissionsUtils {
         }
     }
 
+    /**
+     * Call the onRequestPermissionsResult method with a Granted result.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     */
     @TargetApi(Build.VERSION_CODES.M)
-    private static void grantPermission(Activity activity,
-                                        String permission,
-                                        int requestCode) {
+    private static void grantPermission(Activity activity, String permission, int requestCode) {
         activity.onRequestPermissionsResult(requestCode,
                 new String[]{permission},
                 new int[]{PackageManager.PERMISSION_GRANTED});
     }
 
+    /**
+     * Call the onRequestPermissionsResult method with a Denied result.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    private static void denyPermission(Activity activity, String permission, int requestCode) {
+        activity.onRequestPermissionsResult(requestCode,
+                new String[]{permission},
+                new int[]{PackageManager.PERMISSION_DENIED});
+    }
+
+    /**
+     * Show an AlertDialog explaining to the user why this permission is needed. Then he can agree to be asked the
+     * permission, or refuse. In both case the result is send through the onRequestPermissionResult.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     * @param titleResId resId of the AlertDialog title
+     * @param messageResId resId of the AlertDialog content
+     */
     @TargetApi(Build.VERSION_CODES.M)
     private static void showPermissionAlertDialog(final Activity activity,
                                                   @PermissionString final String permission,
@@ -140,6 +191,7 @@ public class PermissionsUtils {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
+                        denyPermission(activity, permission, requestCode);
                     }
                 })
                 .setPositiveButton(R.string.camera_permission_explanation_ask, new DialogInterface.OnClickListener() {
@@ -153,6 +205,13 @@ public class PermissionsUtils {
                 .show();
     }
 
+    /**
+     * Actually ask the requestPermission to the system.
+     *
+     * @param activity Activity to send the result callback
+     * @param permission Permission to ask
+     * @param requestCode Code of the request
+     */
     @TargetApi(Build.VERSION_CODES.M)
     private static void askPermission(Activity activity, @PermissionString String permission, int requestCode) {
         ActivityCompat.requestPermissions(activity, new String[]{permission}, requestCode);
