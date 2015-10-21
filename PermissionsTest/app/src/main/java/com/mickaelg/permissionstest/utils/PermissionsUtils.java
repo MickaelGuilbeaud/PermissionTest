@@ -16,6 +16,8 @@ import com.mickaelg.permissionstest.R;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class gathering permissions related methods.
@@ -101,23 +103,23 @@ public class PermissionsUtils {
      * Request the permission given in parameter. Granted or denied, the result will be send to the
      * Activity.onRequestPermissionsResult method.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
+     * @param activity    Activity to send the result callback
+     * @param permission  Permission to ask
      * @param requestCode Code of the request
      */
     @TargetApi(Build.VERSION_CODES.M)
     public static void requestPermission(Activity activity, @PermissionString String permission, int requestCode) {
-        explainAndRequestPermission(activity, permission, requestCode, -1, -1);
+        requestPermissions(activity, new String[]{permission}, requestCode);
     }
 
     /**
      * Request the permission given in parameter. Show an AlertDialog explaining the permission if needed, and the
      * result will be send to the onRequestPermissionsResult method.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
-     * @param requestCode Code of the request
-     * @param titleResId resId of the AlertDialog title
+     * @param activity     Activity to send the result callback
+     * @param permission   Permission to ask
+     * @param requestCode  Code of the request
+     * @param titleResId   resId of the AlertDialog title
      * @param messageResId resId of the AlertDialog content
      */
     @TargetApi(Build.VERSION_CODES.M)
@@ -126,64 +128,125 @@ public class PermissionsUtils {
                                                    int requestCode,
                                                    @StringRes int titleResId,
                                                    @StringRes int messageResId) {
-        if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
-            // Permission is granted
-            grantPermission(activity, permission, requestCode);
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
-                && titleResId != -1
-                && messageResId != -1) {
-            // Permission is not granted, we should show an explanation and we have the resources to do so
-            showPermissionAlertDialog(activity, permission, requestCode, titleResId, messageResId);
+        explainAndRequestPermissions(activity, new String[]{permission}, requestCode, titleResId, messageResId);
+    }
+
+    /**
+     * Request the permissions given in parameter. Denied permissions will be requested and the result will be send to
+     * the Activity.onRequestPermissionsResult method. If all permissions are granted, send the result to the same
+     * method.
+     * Warning: it means that onRequestPermissionsResult will receive a callback with all permissions that was not
+     * granted, OR all permissions if they are all already granted.
+     *
+     * @param activity    Activity to send the result callback
+     * @param permissions Permissions to ask
+     * @param requestCode Code of the request
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    public static void requestPermissions(Activity activity, @PermissionString String[] permissions, int requestCode) {
+        explainAndRequestPermissions(activity, permissions, requestCode, -1, -1);
+    }
+
+    /**
+     * Request the permissions given in parameter. Show an AlertDialog explaining the permissions if needed, and the
+     * result will be send to the onRequestPermissionsResult method.
+     * Warning: onRequestPermissionsResult will receive a callback with all permissions that was not granted, OR all
+     * permissions if they are all already granted.
+     *
+     * @param activity     Activity to send the result callback
+     * @param permissions  Permissions to ask
+     * @param requestCode  Code of the request
+     * @param titleResId   resId of the AlertDialog title
+     * @param messageResId resId of the AlertDialog content
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    public static void explainAndRequestPermissions(Activity activity,
+                                                    @PermissionString String[] permissions,
+                                                    int requestCode,
+                                                    @StringRes int titleResId,
+                                                    @StringRes int messageResId) {
+        List<String> deniedPermissions = new ArrayList<>();
+        boolean shouldShowRequestPermissionRationale = false;
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
+                // Permission is granted, nothing to do with it
+                continue;
+            }
+
+            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+                    && titleResId != -1
+                    && messageResId != -1) {
+                shouldShowRequestPermissionRationale = true;
+            }
+
+            // Permission is not granted
+            deniedPermissions.add(permission);
+        }
+
+        if (deniedPermissions.isEmpty()) {
+            // No denied permissions, send all granted permissions
+            grantPermissions(activity, permissions, requestCode);
+        } else if (shouldShowRequestPermissionRationale) {
+            // We need to show a permission explanation
+            showPermissionsAlertDialog(activity,
+                    deniedPermissions.toArray(new String[deniedPermissions.size()]),
+                    requestCode,
+                    titleResId,
+                    messageResId);
         } else {
-            // Permission is not granted, need to ask for it
-            askPermission(activity, permission, requestCode);
+            // Some permissions are denied, we need to request them
+            askPermissions(activity, permissions, requestCode);
         }
     }
 
     /**
      * Call the onRequestPermissionsResult method with a Granted result.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
+     * @param activity    Activity to send the result callback
+     * @param permissions Permissions to ask
      * @param requestCode Code of the request
      */
     @TargetApi(Build.VERSION_CODES.M)
-    private static void grantPermission(Activity activity, String permission, int requestCode) {
-        activity.onRequestPermissionsResult(requestCode,
-                new String[]{permission},
-                new int[]{PackageManager.PERMISSION_GRANTED});
+    private static void grantPermissions(Activity activity, String[] permissions, int requestCode) {
+        int[] results = new int[permissions.length];
+        for (int i = 0; i < results.length; i++) {
+            results[i] = PackageManager.PERMISSION_GRANTED;
+        }
+        activity.onRequestPermissionsResult(requestCode, permissions, results);
     }
 
     /**
      * Call the onRequestPermissionsResult method with a Denied result.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
+     * @param activity    Activity to send the result callback
+     * @param permissions Permissions to ask
      * @param requestCode Code of the request
      */
     @TargetApi(Build.VERSION_CODES.M)
-    private static void denyPermission(Activity activity, String permission, int requestCode) {
-        activity.onRequestPermissionsResult(requestCode,
-                new String[]{permission},
-                new int[]{PackageManager.PERMISSION_DENIED});
+    private static void denyPermissions(Activity activity, String[] permissions, int requestCode) {
+        int[] results = new int[permissions.length];
+        for (int i = 0; i < results.length; i++) {
+            results[i] = PackageManager.PERMISSION_DENIED;
+        }
+        activity.onRequestPermissionsResult(requestCode, permissions, results);
     }
 
     /**
-     * Show an AlertDialog explaining to the user why this permission is needed. Then he can agree to be asked the
-     * permission, or refuse. In both case the result is send through the onRequestPermissionResult.
+     * Show an AlertDialog explaining to the user why these permissions are needed. Then he can agree to be asked the
+     * permissions, or refuse. In both case the result is send through the onRequestPermissionResult.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
-     * @param requestCode Code of the request
-     * @param titleResId resId of the AlertDialog title
+     * @param activity     Activity to send the result callback
+     * @param permissions  Permissions to ask
+     * @param requestCode  Code of the request
+     * @param titleResId   resId of the AlertDialog title
      * @param messageResId resId of the AlertDialog content
      */
     @TargetApi(Build.VERSION_CODES.M)
-    private static void showPermissionAlertDialog(final Activity activity,
-                                                  @PermissionString final String permission,
-                                                  final int requestCode,
-                                                  @StringRes int titleResId,
-                                                  @StringRes int messageResId) {
+    private static void showPermissionsAlertDialog(final Activity activity,
+                                                   @PermissionString final String[] permissions,
+                                                   final int requestCode,
+                                                   @StringRes int titleResId,
+                                                   @StringRes int messageResId) {
         new AlertDialog.Builder(activity)
                 .setTitle(titleResId)
                 .setMessage(messageResId)
@@ -191,14 +254,14 @@ public class PermissionsUtils {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
-                        denyPermission(activity, permission, requestCode);
+                        denyPermissions(activity, permissions, requestCode);
                     }
                 })
                 .setPositiveButton(R.string.camera_permission_explanation_ask, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
-                        askPermission(activity, permission, requestCode);
+                        askPermissions(activity, permissions, requestCode);
                     }
                 })
                 .create()
@@ -208,13 +271,13 @@ public class PermissionsUtils {
     /**
      * Actually ask the requestPermission to the system.
      *
-     * @param activity Activity to send the result callback
-     * @param permission Permission to ask
+     * @param activity    Activity to send the result callback
+     * @param permissions Permissions to ask
      * @param requestCode Code of the request
      */
     @TargetApi(Build.VERSION_CODES.M)
-    private static void askPermission(Activity activity, @PermissionString String permission, int requestCode) {
-        ActivityCompat.requestPermissions(activity, new String[]{permission}, requestCode);
+    private static void askPermissions(Activity activity, @PermissionString String[] permissions, int requestCode) {
+        ActivityCompat.requestPermissions(activity, permissions, requestCode);
     }
 
 }
