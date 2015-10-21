@@ -5,4 +5,3 @@ The PermissionsUtils class can help manage the permission for Android M and next
 
 This class does not handle :
 - Pre Android M versions. Version check is done in a single line and it can't be integrated to the API 23 process as there is no onRequestPermissionsResult method.
-- Multiple permission request. If some permissions are granted while other aren't, it's not possible to send a callback througth the onRequestPermissionResult with result for every permission.
