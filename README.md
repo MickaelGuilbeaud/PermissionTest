@@ -12,5 +12,9 @@ The result is easy to use:
 - If we asked many permissions that are all granted, onRequestPermissionsResult is called with all the permissions.
 - If we asked many permissions and some or all of them are denied, Android will prompt the user for them and the onRequestPermissionsResult method get a callback with the permissions that was previously denied.
 
-This does not handle :
+This does not handle:
 - Pre Android M versions. Version check is done in a single line and it can't be integrated to the API 23 process as there is no onRequestPermissionsResult method to send the callback.
+
+How to use:
+- Add the PermissionsUtils class to your project
+- Create two String ressources with ids camera_permission_explanation_back and camera_permission_explanation_ask, they are used by the AlertDialog. 
